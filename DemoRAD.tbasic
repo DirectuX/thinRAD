@@ -1,0 +1,7 @@
+
+﻿
+﻿
+uses "UI"
+#Resource "RAD.rc"
+#Region "UI"
+#EndRegion
