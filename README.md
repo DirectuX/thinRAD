@@ -15,3 +15,20 @@ SaveScriptBefore=true
 
 
 <sup>1</sup> Not Yet Alpha
+
+## Usage
+
+in your script
+write an empty "UI" region / end region
+
+thinRAD will find all #Resource files and fill the "UI" region with callback functions. 
+
+## Demo
+
+Run the script with full-path-to-DemoRAD.tbasic as command line parameter or via the user tool menu after setup.
+RAD.rc must be in the same directory than DemoRAD.tbasic
+
+## Roadmap
+
+complete controls recognition
+'update' mode
