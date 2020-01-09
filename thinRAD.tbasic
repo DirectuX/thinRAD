@@ -1,0 +1,361 @@
+'---Script created on 01-06-2020 10:50:14 by
+'    button
+'    label
+'    textbox
+'    listbox
+'    checkbox
+'    radiobutton
+'    frame
+'    menu
+'    treeview
+'    richedit
+
+'Uses "console"
+uses "OS"
+Uses "File"
+
+Dim mainFile as String ' path to the script to be processed
+Dim mainFileRootPath as String
+Dim fileContent as String
+dim onError as Number ' fileSave error code returned
+Dim outMatrix() as String
+Dim outMatrix2() as String
+Dim outRC() as String
+Dim resourceList() as String
+dim includeList() as String
+Dim txt as String
+Dim insertPosition as DWord
+Dim resource_exist as Boolean
+Dim region_exist as Boolean
+$UIREGION = "UI"
+
+
+Function TBMain() As Long
+
+  getScript
+
+  stack(includeList, mainFile)
+
+  local j as dword = 1
+
+  do while j <= ubound(includeList)
+
+    resource_exist = %FALSE
+    region_exist = %FALSE
+    Redim resourceList()
+
+    loadScript(includeList(j))
+    parseScript
+
+    if resource_exist and region_exist then
+      processRC
+      writeToFile(includeList(j))
+    Elseif resource_exist Then
+      MsgBox ("Consider adding Region " & $DQ & "UI" & $DQ & $CRLF & "in " & includeList(j))
+    elseif region_exist Then
+      MsgBox ("Found Region " & $DQ & "UI" & $DQ & " without #Resource " & $DQ & "file" & $DQ & $CRLF & "in " & includeList(j))
+    endif
+
+    incr j
+
+  loop
+
+  MsgBox (null,"Done.")
+end Function
+
+sub processRC()
+
+'[hwnd =] DIALOG NEW [{PIXELS, | UNITS},] Name sDialogName, hwParent
+  Local myMatrix() as String
+  local inForm as Boolean
+  Local tmpStr as String
+  Local ctrlName as String
+  Local cLine as String
+  Local formSizeX, formSizeY as word
+
+  for i as dword = 2 to ubound(resourceList)
+    loadScript(resourceList(i))
+    Parse(fileContent, myMatrix, $CRLF)
+    
+    For j as DWord = 1 to UBound(myMatrix)
+      
+      cLine = myMatrix(j)
+      
+      if not inForm and Parse$(cLine, " ", 2) = "DIALOGEX" Then
+        inForm = %TRUE
+        
+        tmpStr = Parse$(cLine, " ",3)
+        formSizeX = Parse$(tmpStr, ",",3)
+        formSizeY = Parse$(tmpStr, ",",4)
+        '[t] & to $
+
+        tmpStr = Parse$(cLine, " ",1)
+        local tempStr as String
+        stack(outRC, tabs & "")
+        stack(outRC, tabs(1) & "#Region " & $DQ & tmpStr & $DQ)
+        stack(outRC, tabs(1) & "")
+        stack(outRC, tabs & "DIALOG New units, Name " & tmpStr & ", %HWND_DESKTOP")
+        stack(outRC, tabs & "'DIALOG SHOW MODAL " & tmpStr & ".Handle")
+        stack(outRC, tabs & "")
+        stack(outRC, tabs & "CallBack Function " & tmpStr & "_OnLoad() As Long")
+        stack(outRC, tabs(1) & "")
+
+      Elseif not inForm then
+        Iterate for
+      endif
+      
+      if inForm and Parse$(cLine, " ", 1) = "STYLE" Then
+        if not instr(cLine, "WS_SYSMENU") then
+          stack(outRC, tabs & tmpStr & ".Minsize = " & formSizeX & ", " & formSizeX)
+          stack(outRC, tabs & "")
+        endif
+        
+        stack(outRC, tabs(-1) & "End Function")
+        stack(outRC, tabs & "")
+        stack(outRC, tabs & "CallBack Function " & tmpStr & "_OnCallBack() As Long")
+        stack(outRC, tabs(1) & "")
+        stack(outRC, tabs(-1) & "End Function")
+        stack(outRC, tabs & "")
+        stack(outRC, tabs & "CallBack Function " & tmpStr & "_OnClose() As Long")
+        stack(outRC, tabs(1) & "")
+        stack(outRC, tabs(-1) & "End Function")
+        stack(outRC, tabs & "")
+        
+      end if
+      
+      If inForm and Parse$(LTrim$(cLine, " "), " ", 1) = "CONTROL" Then
+      '[breakpoint] <Any note here. Breakpoint will be set to line following this statement>
+      
+        tmpStr = LTrim$(cLine,ANY " CONTROL ")
+        ctrlName = Parse$(tmpStr, ",", 2)
+        
+        'local uu as String = Parse$(tmpStr, ",", 3)
+        'msgbox (null, "*" & uu & "*" & $crlf & "*" & $DQ & "Button" & $DQ & "*")
+        'local ul as DWord = len($DQ & "Button" & $DQ)
+        'Select Case (Parse$(tmpStr, ",", 3))
+        select case Parse$(tmpStr, ",", 3)
+        
+          Case $DQ & "Button" & $DQ
+            'if instr(Parse$(tmpStr, ",",4),"BS_DEFPUSHBUTTON") Then
+              stack(outRC, tabs & "#Region " & $DQ & ctrlName & $DQ)
+              stack(outRC, tabs(1) & "")
+              stack(outRC, tabs & "CallBack Function " & ctrlName & "_OnClick() As Long")
+              stack(outRC, tabs(1) & "")
+              stack(outRC, tabs(-1) & "End Function")
+              stack(outRC, tabs & "")
+              stack(outRC, tabs & "CallBack Function " & ctrlName & "_OnKillFocus() As Long")
+              stack(outRC, tabs(1) & "")
+              stack(outRC, tabs(-1) & "End Function")
+              stack(outRC, tabs & "")
+              stack(outRC, tabs & "CallBack Function " & ctrlName & "_OnSetFocus() As Long") ' !! there's a typo in help page !!
+              stack(outRC, tabs(1) & "")
+              stack(outRC, tabs(-1) & "End Function")
+              stack(outRC, tabs & "")
+              stack(outRC, tabs & "CallBack Function " & ctrlName & "_OnDisable() As Long")
+              stack(outRC, tabs(1) & "")
+              stack(outRC, tabs(-1) & "End Function")
+              stack(outRC, tabs & "")
+              stack(outRC, tabs & "CallBack Function " & ctrlName & "_OnCallBack() As Long")
+              stack(outRC, tabs(1) & "")
+              stack(outRC, tabs(-1) & "End Function")
+              stack(outRC, tabs & "")
+              stack(outRC, tabs(-1) & "#EndRegion")
+              stack(outRC, tabs() & "")
+            'endif
+          Case $DQ& "Edit" & $DQ
+          Case $DQ& "ListBox" & $DQ
+          Case $DQ& "SysListView32" & $DQ
+          Case $DQ& "RichEdit20A" & $DQ
+          Case $DQ& "Static" & $DQ
+        end Select
+        
+      EndIf
+      
+      If inForm and Parse$(cLine, " ", 1) = "END" Then
+        stack(outRC, tabs(-1) & "#EndRegion")
+        stack(outRC, tabs(-1) & "")
+        inForm = %FALSE
+      EndIf
+
+    next
+    
+  next
+
+end sub
+
+function tabs(Optional upordown as integer) as string
+  
+  Static tabCount as Integer
+  
+  tabCount += upordown
+  
+  '[t] ' Next line doesn't work with $TAB
+  return Repeat$(2 * tabCount,$SPC) 
+  
+end Function
+
+Function getScript() as Boolean
+
+  OS_CommandsSetSep($DQ)' By default OS_GetCommand splits path that contains dash signs (unwanted)
+
+  mainFile = OS_GetCommand(2)
+  mainFile = Trim$(mainFile,$DQ) 'when script is bundled, OS_GetCommand return parameters with double quotes; when in thinAir, there are no dq (unwanted)
+  mainFileRootPath = FILE_PathSplit(mainFile, %PATH_ROOTPATH)
+  If OS_GetCommands <> 2 Then ' parameters are expected to be from 00 to 02
+    MsgBox ("Parameters count invalid")
+    Stop
+  endif
+  Return %TRUE
+  
+end sub
+
+function loadScript(scriptFile as String) as Boolean
+
+  if (FILE_Exists(scriptFile)) then ' can we reach the file ?
+' Msgbox("Opening " & mainFile)
+  else
+    MsgBox ("Can't open " & scriptFile)
+    Stop
+  endif
+
+  fileContent = FILE_Load(scriptFile)
+  Return %TRUE
+  
+end function
+
+sub parseScript()
+
+  Local tempStr as String
+  Local includeCount as DWord
+  Local myMatrix() as String
+
+  Redim outMatrix()
+  Redim outMatrix2()
+
+  Parse(fileContent, myMatrix, $CRLF)
+
+  For i as DWord = 1 to UBound(myMatrix)
+
+    if isComment(myMatrix(i)) Then
+      if region_exist then
+        stack(outMatrix2,myMatrix(i))
+      Else
+        stack(outMatrix,myMatrix(i))
+      EndIf
+      Iterate for
+    endif
+
+    if isInclude(myMatrix(i)) Then
+      tempStr = mainFileRootPath & Grab$(myMatrix(i),chr$(34),chr$(34))
+      stack(includeList,tempStr)
+      if region_exist then
+        stack(outMatrix2,myMatrix(i))
+      Else
+        stack(outMatrix,myMatrix(i))
+      EndIf
+      Iterate for
+    endif
+
+    if isResource(myMatrix(i)) Then
+      tempStr = mainFileRootPath & Grab$(myMatrix(i),chr$(34),chr$(34))
+      stack(resourceList, tempStr)
+      if region_exist then
+        stack(outMatrix2,myMatrix(i))
+      Else
+        stack(outMatrix,myMatrix(i))
+      EndIf
+      resource_exist = %TRUE
+      Iterate for
+    endif
+
+    If isRegion(myMatrix(i)) and insertPosition = 0 Then
+      if region_exist then
+        stack(outMatrix2,myMatrix(i))
+      Else
+        stack(outMatrix,myMatrix(i))
+      EndIf
+      tempStr = Grab$(myMatrix(i),chr$(34),chr$(34))
+      if tempStr = $UIREGION Then
+        region_exist = %TRUE
+      endif
+      Iterate for
+    endif
+
+    if region_exist then
+      stack(outMatrix2,myMatrix(i))
+    Else
+      stack(outMatrix,myMatrix(i))
+    EndIf
+
+  next
+
+end sub
+
+Function writeToFile(filePath as String) as Boolean
+
+  Local outstring as String
+  Local onError as number
+
+  FILE_Rename(filePath,FILE_PathSplit(filePath, %PATH_ROOTPATH) & Date$(3) & $SPC & time$(2) & $SPC & FILE_PathSplit(filePath, %PATH_FILEEXT ) & ".backup")
+  outstring = Join$(outMatrix , $CRLF) & $CRLF & Join$(outRC , $CRLF) & $CRLF & Join$(outMatrix2 , $CRLF)
+
+  FILE_Save(filePath,outstring)
+
+  if onError = 0 Then
+'MsgBox ("OK - File saved : " & $CRLF & filePath)
+'[todo] Find a way to reload files already opened in thinAir.
+    OS_ShellExecute("edit", filePath,"","",%SW_NORMAL)
+    Return %TRUE
+  else
+    MsgBox ("Error while saving :" & $CRLF & Str$(onError)
+    Return %FALSE
+  end if
+
+end Function
+
+Function isComment(txt as String) as Boolean
+'[t] How to quick test if there is a comment at the end of the linecode ?
+  txt = Trim$(txt)
+  if StartsWith(txt,"'",FALSE) then
+    return TRUE
+  elseif Startswith(txt,"REM ",False) Then
+    Return TRUE
+  elseif Startswith(txt,"//",False) Then
+    Return TRUE
+  Else ' note : thinDebugger treats if/elseif as if it was one big instruction (no step by step display)
+    return FALSE
+  endif
+end function
+
+Function isInclude(byval txt as String) as Boolean
+  txt = Trim$(txt)
+  if StartsWith(txt,"#include ",FALSE) then
+    return TRUE
+  else
+    return FALSE
+  endif
+end function
+
+Function isResource(byval txt as String) as Boolean
+  txt = Trim$(txt)
+  if StartsWith(txt,"#resource ",FALSE) then
+    return TRUE
+  else
+    return FALSE
+  endif
+end function
+
+Function isRegion(byval txt as String) as Boolean
+  txt = Trim$(txt)
+  if StartsWith(txt,"#region ",FALSE) then
+    return TRUE
+  else
+    return FALSE
+  endif
+end function
+
+sub stack(ByRef anArray() as Variant, aValue as Variant)
+  Redim Preserve anArray(1+Ubound(anArray))
+  anArray(Ubound(anArray))=aValue
+end sub
+  
